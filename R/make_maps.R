@@ -27,28 +27,25 @@ ocean_polygon <- st_polygon(list(rbind(
   st_sfc(crs = 4326) %>%
   st_sf()
 
-# Define the zoom window for North America (expanded slightly to show context)
-na_zoom <- list(
-  xmin = na_bbox[1] - 10,  # Western extent
-  xmax = na_bbox[3] + 10,  # Eastern extent
-  ymin = na_bbox[2] - 5,   # Southern extent
-  ymax = na_bbox[4] + 5    # Northern extent
-)
-
 # Function to create map with different projections and improved aesthetics
 create_projection_map <- function(projection, title) {
   # Transform both the world and ocean data to the target projection
   world_transformed <- st_transform(world, crs = projection)
   ocean_transformed <- st_transform(ocean_polygon, crs = projection)
+  na_transformed <- st_transform(north_america, crs = projection)
 
-  # Transform the zoom coordinates
-  bbox_transformed <- st_transform(
-    st_as_sfc(st_bbox(c(xmin = na_zoom$xmin, xmax = na_zoom$xmax,
-                        ymin = na_zoom$ymin, ymax = na_zoom$ymax),
-                      crs = 4326)),
-    projection
+  # Get the bounding box of transformed North America and expand it slightly
+  bbox_transformed <- st_bbox(na_transformed)
+  bbox_width <- bbox_transformed[3] - bbox_transformed[1]
+  bbox_height <- bbox_transformed[4] - bbox_transformed[2]
+
+  # Expand bbox by 20%
+  plot_bbox <- c(
+    bbox_transformed[1] - 0.2 * bbox_width,
+    bbox_transformed[2] - 0.2 * bbox_height,
+    bbox_transformed[3] + 0.2 * bbox_width,
+    bbox_transformed[4] + 0.2 * bbox_height
   )
-  bbox_coords <- st_bbox(bbox_transformed)
 
   # For conical projections, we'll use a different approach
   is_conic <- grepl("aea|lcc", projection)
@@ -57,8 +54,8 @@ create_projection_map <- function(projection, title) {
     ggplot() +
       geom_sf(data = world_transformed, fill = "#90CA91", color = "#666666", linewidth = 0.2) +
       coord_sf(crs = projection,
-               xlim = bbox_coords[c(1,3)],
-               ylim = bbox_coords[c(2,4)]) +
+               xlim = plot_bbox[c(1,3)],
+               ylim = plot_bbox[c(2,4)]) +
       theme_minimal() +
       theme(
         plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
@@ -75,8 +72,8 @@ create_projection_map <- function(projection, title) {
       geom_sf(data = ocean_transformed, fill = "#B3E0F2", color = NA) +
       geom_sf(data = world_transformed, fill = "#90CA91", color = "#666666", linewidth = 0.2) +
       coord_sf(crs = projection,
-               xlim = bbox_coords[c(1,3)],
-               ylim = bbox_coords[c(2,4)]) +
+               xlim = plot_bbox[c(1,3)],
+               ylim = plot_bbox[c(2,4)]) +
       ggtitle(title) +
       theme_minimal() +
       theme(
